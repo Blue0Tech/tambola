@@ -25,6 +25,11 @@ nameEntry = None
 nameWindow = None
 canvas1 = None
 
+gameWindow = None
+ticketGrid = []
+currentNumberList = []
+randomColList = []
+
 def askPlayerName():
     global playerName
     global nameEntry
@@ -58,6 +63,7 @@ def saveName():
     global nameWindow
     global nameEntry
     global playerName
+    global gameWindow
 
     playerName = nameEntry.get()
     nameEntry.delete(0,END)
@@ -65,7 +71,75 @@ def saveName():
 
     SERVER.send(playerName.encode())
 
+    gameWindow = Tk()
+    gameWindow.title('Tambola Family Fun!')
+    gameWindow.geometry('800x600')
+    
+    swidth = gameWindow.winfo_screenwidth()
+    sheight = gameWindow.winfo_screenheight()
+    bg = ImageTk.PhotoImage(file='./assets/background.png')
+
+    createTicket()
+    placeNumber()
+
 def receivedMsg():
     pass
+
+def createTicket():
+    global gameWindow
+    global ticketGrid
+
+    mainLabel = Label(gameWindow,width=92,height=17,relief='ridge',borderwidth=5,bg='white')
+    mainLabel.place(x=95,y=119)
+
+    xPos = 105
+    yPos = 130
+
+    for row in range(0,3):
+        rowList = []
+        for col in range(0,10):
+            boxButton = Button(gameWindow,font=('Chalkboard SE',30),width=2,height=1,borderwidth=5,bg='#fff176')
+            boxButton.place(x=xPos,y=yPos)
+            rowList.append(boxButton)
+            xPos+=64
+        ticketGrid.append(rowList)
+        xPos = 105
+        yPos+=82
+
+def placeNumber():
+    global ticketGrid
+    global currentNumberList
+    global randomColList
+
+    for row in range(0,3):
+        randomColList = []
+        counter = 0
+        while(counter<=4):
+            randomCol = random.randint(0,9)
+            if(randomCol not in randomColList):
+                randomColList.append(randomCol)
+                counter+=1
+    
+    numberContainer = {}
+    for i in range(0,3):
+        numberContainer[i] = []
+        for j in range(0,10):
+            number = (i*10)+j
+            numberContainer[i].append(number)
+    
+    counter = 0
+    while(counter < len(randomColList)):
+        colNum = randomColList[counter]
+        # numbersListByIndex = numberContainer[str(colNum)]
+        # randomNumber = random.choice(numbersListByIndex)
+        randomList = random.choice(list(numberContainer.items()))
+        currentRow = randomList[0]
+        randomNumber = randomList[1][colNum]
+
+        if(randomNumber not in currentNumberList):
+            numberBox = ticketGrid[currentRow][colNum]
+            numberBox.configure(text=randomNumber,fg='black')
+            currentNumberList.append(randomNumber)
+            counter+=1
 
 setup()
