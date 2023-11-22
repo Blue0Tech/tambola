@@ -30,6 +30,52 @@ ticketGrid = []
 currentNumberList = []
 randomColList = []
 
+flashNumberLabel = None
+flashNumberList = []
+canvas2 = None
+gameOver = False
+markedNumberList = []
+
+def showWrongMarking():
+    global ticketGrid
+    global flashNumberList
+
+    for row in ticketGrid:
+        for numberBox in row:
+            if(numberBox['text']):
+                if(int(numberBox['text']) not in flashNumberList):
+                    numberBox.configure(state='disabled',background='#f48fb1',foreground='white')
+
+def markNumber(button):
+    global markedNumberList
+    global flashNumberList
+    global playerName
+    global SERVER
+    global currentNumberList
+    global gameOver
+    global flashNumberLabel
+    global canvas2
+
+    buttonText = int(button['text'])
+    markedNumberList.append(buttonText)
+
+    button.configure(state='disabled',background='#c5e1a5',foreground='black')
+
+    winner = all(item in flashNumberList for item in markedNumberList)
+
+    if(winner and sorted(currentNumberList) == sorted(markedNumberList)):
+        message = playerName + ' wins the game.'
+        SERVER.send(message.encode('utf-8'))
+        return
+    
+    if(len(currentNumberList) == len(markedNumberList)):
+        winner = all(item in flashNumberList for item in markedNumberList)
+        if(not winner):
+            gameOver = True
+            message = 'You lose the game'
+            canvas2.itemconfigure(flashNumberLabel,text=message,font=('Chalkboard SE',40))
+            showWrongMarking()
+
 def askPlayerName():
     global playerName
     global nameEntry
@@ -64,6 +110,8 @@ def saveName():
     global nameEntry
     global playerName
     global gameWindow
+    global flashNumberLabel
+    global canvas2
 
     playerName = nameEntry.get()
     nameEntry.delete(0,END)
@@ -78,12 +126,42 @@ def saveName():
     swidth = gameWindow.winfo_screenwidth()
     sheight = gameWindow.winfo_screenheight()
     bg = ImageTk.PhotoImage(file='./assets/background.png')
+    
+    canvas2 = Canvas(gameWindow,width=500,height=500)
+    canvas2.create_image(0,0,image=bg,anchor='nw')
+    canvas2.pack(fill='both',expand=True)
+    canvas2.create_text(swidth/4.5,50,text='Tambola Family Fun',font=('Chalkboard SE',50),fill='#3e2723')
 
     createTicket()
     placeNumber()
 
+    flashNumberLabel = canvas2.create_text(400,sheight/2,text='Waiting for others to join...',font=('Chalkboard SE',30),fill='#3e2723')
+
+    gameWindow.mainloop()
+
 def receivedMsg():
-    pass
+    global SERVER
+    global flashNumberLabel
+    global flashNumberList
+    global canvas2
+    global gameOver
+
+    numbers = [str(i) for i in range(0,30)]
+
+    while(True):
+        chunk = SERVER.recv(2048).decode()
+        if(chunk in numbers and flashNumberLabel and not gameOver):
+            flashNumberList.append(int(chunk))
+            configureCanvas2(chunk,60)
+        elif('wins the game.' in chunk):
+            gameOver = True
+            configureCanvas2(chunk,40)
+
+def configureCanvas2(chunk,size):
+    global canvas2
+    global flashNumberLabel
+
+    canvas2.itemconfigure(flashNumberLabel,text=chunk,font=('Chalkboard SE',size))
 
 def createTicket():
     global gameWindow
@@ -99,6 +177,7 @@ def createTicket():
         rowList = []
         for col in range(0,10):
             boxButton = Button(gameWindow,font=('Chalkboard SE',30),width=2,height=1,borderwidth=5,bg='#fff176')
+            boxButton.configure(command = lambda boxButton = boxButton : markNumber(boxButton))
             boxButton.place(x=xPos,y=yPos)
             rowList.append(boxButton)
             xPos+=64
